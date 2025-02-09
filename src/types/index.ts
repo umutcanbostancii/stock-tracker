@@ -1,3 +1,5 @@
+export type OwnerType = 'umutcan' | 'levent' | 'sirket';
+
 export interface Product {
   id: string;
   user_id: string;
@@ -7,6 +9,8 @@ export interface Product {
   imei: string | null;
   quantity: number;
   price: number;
+  owner: OwnerType;
+  purchase_date: string;
   created_at: string;
   updated_at: string;
 }
@@ -50,4 +54,19 @@ export interface ApiResponse<T> {
 export interface User {
   id: string;
   created_at: string;
+}
+
+export interface ImportFormData {
+  file: File;
+  owner: OwnerType;
+}
+
+export interface ExcelRow {
+  'Ürün Adı': string;
+  'Marka': string;
+  'Model': string;
+  'IMEI'?: string;
+  'Stok Miktarı': string | number;
+  'Fiyat': string | number;
+  'Alış Tarihi'?: string | Date;
 }

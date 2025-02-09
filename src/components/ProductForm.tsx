@@ -3,7 +3,7 @@ import { Dialog, Transition } from '@headlessui/react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
-import type { Product, ProductFormData } from '../types';
+import type { Product, OwnerType } from '../types';
 
 interface ProductFormProps {
   product?: Product | null;
@@ -13,13 +13,15 @@ interface ProductFormProps {
 
 export default function ProductForm({ product, onClose, onSuccess }: ProductFormProps) {
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState<ProductFormData>({
+  const [formData, setFormData] = useState({
     name: product?.name || '',
     brand: product?.brand || '',
     model: product?.model || '',
     imei: product?.imei || '',
     quantity: product?.quantity || 0,
     price: product?.price || 0,
+    owner: product?.owner || 'sirket' as OwnerType,
+    purchase_date: product?.purchase_date ? new Date(product.purchase_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -33,52 +35,36 @@ export default function ProductForm({ product, onClose, onSuccess }: ProductForm
         throw new Error('Kullanıcı oturumu bulunamadı');
       }
 
-      console.log('Current user:', user); // Debug için
-
       if (product) {
         const { error } = await supabase
           .from('products')
-          .update(formData)
+          .update({
+            ...formData,
+            purchase_date: new Date(formData.purchase_date).toISOString()
+          })
           .eq('id', product.id)
           .eq('user_id', user.id);
 
-        if (error) {
-          console.error('Update error:', error); // Debug için
-          throw error;
-        }
+        if (error) throw error;
         toast.success('Ürün başarıyla güncellendi');
       } else {
-        const newProduct = { ...formData, user_id: user.id };
-        console.log('Inserting product:', newProduct); // Debug için
-
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('products')
-          .insert([newProduct])
-          .select()
-          .single();
+          .insert([{
+            ...formData,
+            user_id: user.id,
+            purchase_date: new Date(formData.purchase_date).toISOString()
+          }]);
 
-        if (error) {
-          console.error('Insert error:', error); // Debug için
-          throw error;
-        }
-        
-        console.log('Inserted product:', data); // Debug için
+        if (error) throw error;
         toast.success('Ürün başarıyla eklendi');
       }
 
       onSuccess();
       onClose();
     } catch (error: any) {
-      console.error('Detailed error:', {
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code
-      });
-      
-      toast.error(
-        error.message || 'Bir hata oluştu. Lütfen tüm alanları kontrol edip tekrar deneyin.'
-      );
+      console.error('Form error:', error);
+      toast.error(error.message || 'Bir hata oluştu');
     } finally {
       setLoading(false);
     }
@@ -117,7 +103,7 @@ export default function ProductForm({ product, onClose, onSuccess }: ProductForm
                     className="rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                     onClick={onClose}
                   >
-                    <span className="sr-only">Close</span>
+                    <span className="sr-only">Kapat</span>
                     <XMarkIcon className="h-6 w-6" aria-hidden="true" />
                   </button>
                 </div>
@@ -216,6 +202,39 @@ export default function ProductForm({ product, onClose, onSuccess }: ProductForm
                             step="0.01"
                             value={formData.price}
                             onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) })}
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                          />
+                        </div>
+
+                        <div>
+                          <label htmlFor="owner" className="block text-sm font-medium text-gray-700">
+                            Sahip
+                          </label>
+                          <select
+                            id="owner"
+                            name="owner"
+                            required
+                            value={formData.owner}
+                            onChange={(e) => setFormData({ ...formData, owner: e.target.value as OwnerType })}
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                          >
+                            <option value="umutcan">Umutcan</option>
+                            <option value="levent">Levent</option>
+                            <option value="sirket">Şirket</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label htmlFor="purchase_date" className="block text-sm font-medium text-gray-700">
+                            Alış Tarihi
+                          </label>
+                          <input
+                            type="date"
+                            name="purchase_date"
+                            id="purchase_date"
+                            required
+                            value={formData.purchase_date}
+                            onChange={(e) => setFormData({ ...formData, purchase_date: e.target.value })}
                             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                           />
                         </div>
