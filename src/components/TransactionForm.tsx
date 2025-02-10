@@ -3,7 +3,7 @@ import { Dialog, Transition } from '@headlessui/react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
-import type { Product, Transaction, OwnerType } from '../types';
+import type { Product, Transaction, OwnerType, PlatformType, TransactionType } from '../types';
 
 interface TransactionFormProps {
   onClose: () => void;
@@ -28,9 +28,9 @@ export default function TransactionForm({ onClose, onSuccess }: TransactionFormP
     category: '',
     brand: '',
     product_id: '',
-    type: 'stok_cikis' as const,
+    type: 'stok_cikis' as TransactionType,
     quantity: 1,
-    platform: 'manual' as const,
+    platform: 'manual' as PlatformType,
     owner: 'sirket' as OwnerType,
     sale_price: 0,
     sale_date: new Date().toISOString().split('T')[0],
@@ -150,7 +150,7 @@ export default function TransactionForm({ onClose, onSuccess }: TransactionFormP
           product_id: formData.product_id,
           type: formData.type,
           quantity: formData.quantity,
-          platform: formData.platform,
+          platform: formData.platform as PlatformType,
           owner: formData.owner,
           sale_price: formData.sale_price,
           sale_date: formData.sale_date,
@@ -322,7 +322,7 @@ export default function TransactionForm({ onClose, onSuccess }: TransactionFormP
                               name="type"
                               required
                               value={formData.type}
-                              onChange={(e) => setFormData({ ...formData, type: e.target.value as any })}
+                              onChange={(e) => setFormData({ ...formData, type: e.target.value as TransactionType })}
                               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-gray-600"
                             >
                               <option value="stok_giris">Stok Girişi</option>
@@ -359,7 +359,7 @@ export default function TransactionForm({ onClose, onSuccess }: TransactionFormP
                               name="platform"
                               required
                               value={formData.platform}
-                              onChange={(e) => setFormData({ ...formData, platform: e.target.value as any })}
+                              onChange={(e) => setFormData({ ...formData, platform: e.target.value as PlatformType })}
                               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-gray-600"
                             >
                               <option value="manual">Manuel</option>
