@@ -1,7 +1,7 @@
 import { Fragment, useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { Dialog, Transition } from '@headlessui/react';
-import { supabase, signOut } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import { 
   XMarkIcon, 
   Bars3Icon,
@@ -10,7 +10,10 @@ import {
   ArrowPathIcon,
   ArrowUpTrayIcon,
   UserIcon,
-  ArrowRightOnRectangleIcon
+  ArrowRightOnRectangleIcon,
+  BellIcon,
+  CubeTransparentIcon,
+  BanknotesIcon
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
@@ -19,6 +22,7 @@ const navigation = [
   { name: 'Ürünler', href: '/products', icon: CubeIcon },
   { name: 'İşlemler', href: '/transactions', icon: ArrowPathIcon },
   { name: 'İçe Aktar', href: '/import', icon: ArrowUpTrayIcon },
+  { name: 'Finans', href: '/finance', icon: BanknotesIcon },
 ];
 
 function classNames(...classes: string[]) {
@@ -30,12 +34,33 @@ export default function Layout() {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     // Mevcut kullanıcıyı al
     const getCurrentUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          navigate('/login');
+        } else {
+          setUser(user);
+        }
+      } catch (error) {
+        console.error('Auth error:', error);
+        navigate('/login');
+      } finally {
+        setLoading(false);
+      }
     };
 
     getCurrentUser();
@@ -56,13 +81,25 @@ export default function Layout() {
 
   const handleLogout = async () => {
     try {
-      await signOut();
+      await supabase.auth.signOut();
       toast.success('Başarıyla çıkış yapıldı');
       navigate('/login');
     } catch (error: any) {
       toast.error('Çıkış yapılırken hata oluştu');
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <div>
@@ -232,24 +269,67 @@ export default function Layout() {
       </div>
 
       <div className="lg:pl-72">
-        <div className="sticky top-0 z-40 lg:mx-auto lg:max-w-7xl lg:px-8">
-          <div className="flex h-16 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-0 lg:shadow-none">
-            <button
-              type="button"
-              className="-m-2.5 p-2.5 text-gray-700 lg:hidden"
-              onClick={() => setSidebarOpen(true)}
-            >
-              <span className="sr-only">Open sidebar</span>
-              <Bars3Icon className="h-6 w-6" aria-hidden="true" />
-            </button>
+        <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
+          <button
+            type="button"
+            className="-m-2.5 p-2.5 text-gray-700 lg:hidden"
+            onClick={() => setSidebarOpen(true)}
+          >
+            <span className="sr-only">Open sidebar</span>
+            <Bars3Icon className="h-6 w-6" aria-hidden="true" />
+          </button>
 
-            <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
-              <div className="flex items-center gap-x-4 lg:gap-x-6 ml-auto">
-                <div className="hidden lg:block lg:h-6 lg:w-px lg:bg-gray-200" aria-hidden="true" />
-                <div className="flex items-center">
-                  <span className="text-sm text-gray-500 mr-2">
-                    {user?.email}
-                  </span>
+          {/* Logo ve Başlık */}
+          <div className="flex items-center gap-x-3">
+            <CubeTransparentIcon className="h-8 w-8 text-indigo-600" aria-hidden="true" />
+            <span className="text-lg font-semibold text-gray-900">StockTracker</span>
+          </div>
+
+          <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
+            <div className="flex flex-1 items-center justify-end gap-x-4 lg:gap-x-6">
+              {/* Tarih ve Saat */}
+              <div className="hidden lg:flex lg:items-center lg:gap-x-4">
+                <div className="text-sm text-gray-500">
+                  {currentTime.toLocaleDateString('tr-TR', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </div>
+                <div className="h-6 w-px bg-gray-200" aria-hidden="true" />
+                <div className="text-sm text-gray-500">
+                  {currentTime.toLocaleTimeString('tr-TR', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                  })}
+                </div>
+              </div>
+
+              {/* Bildirim Butonu */}
+              <button
+                type="button"
+                className="relative rounded-full bg-white p-1.5 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+              >
+                <span className="sr-only">Bildirimleri göster</span>
+                <BellIcon className="h-6 w-6" aria-hidden="true" />
+                <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-400 ring-2 ring-white" />
+              </button>
+
+              {/* Kullanıcı Bilgileri */}
+              <div className="hidden lg:flex lg:items-center lg:gap-x-6">
+                <div className="h-6 w-px bg-gray-200" aria-hidden="true" />
+                <div className="flex items-center gap-x-4">
+                  <UserIcon className="h-8 w-8 rounded-full bg-gray-50 p-1 text-gray-500" aria-hidden="true" />
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium text-gray-900">
+                      Hoş geldiniz
+                    </span>
+                    <span className="text-sm text-gray-500">
+                      {user?.email}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>

@@ -1,51 +1,32 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
-import { supabase } from './lib/supabase';
-import { Session } from '@supabase/supabase-js';
+import { Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
-import Login from './pages/Login';
-import Profile from './pages/Profile';
 import Dashboard from './pages/Dashboard';
 import Products from './pages/Products';
 import Transactions from './pages/Transactions';
-import ImportProducts from './pages/ImportProducts';
+import Finance from './pages/Finance';
+import PlatformDetail from './pages/PlatformDetail';
+import Import from './pages/Import';
+import Profile from './pages/Profile';
+import Login from './pages/Login';
+import { Toaster } from 'react-hot-toast';
 
 function App() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Mevcut oturum durumunu kontrol et
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
-
-    // Oturum değişikliklerini dinle
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  if (loading) {
-    return <div>Yükleniyor...</div>;
-  }
-
   return (
-    <Routes>
-      <Route path="/login" element={!session ? <Login /> : <Navigate to="/" />} />
-      <Route path="/" element={session ? <Layout /> : <Navigate to="/login" />}>
-        <Route index element={<Dashboard />} />
-        <Route path="products" element={<Products />} />
-        <Route path="transactions" element={<Transactions />} />
-        <Route path="import" element={<ImportProducts />} />
-        <Route path="profile" element={<Profile />} />
-      </Route>
-    </Routes>
+    <>
+      <Toaster position="top-right" />
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/" element={<Layout />}>
+          <Route index element={<Dashboard />} />
+          <Route path="products" element={<Products />} />
+          <Route path="transactions" element={<Transactions />} />
+          <Route path="finance" element={<Finance />} />
+          <Route path="finance/:platform" element={<PlatformDetail />} />
+          <Route path="import" element={<Import />} />
+          <Route path="profile" element={<Profile />} />
+        </Route>
+      </Routes>
+    </>
   );
 }
 

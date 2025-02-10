@@ -96,7 +96,7 @@ export default function ProductForm({ product, onClose, onSuccess }: ProductForm
               leaveFrom="opacity-100 translate-y-0 sm:scale-100"
               leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
             >
-              <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
+              <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-3xl sm:p-6">
                 <div className="absolute right-0 top-0 hidden pr-4 pt-4 sm:block">
                   <button
                     type="button"
@@ -109,11 +109,11 @@ export default function ProductForm({ product, onClose, onSuccess }: ProductForm
                 </div>
                 <div className="sm:flex sm:items-start">
                   <div className="mt-3 text-center sm:mt-0 sm:text-left w-full">
-                    <Dialog.Title as="h3" className="text-base font-semibold leading-6 text-gray-900">
+                    <Dialog.Title as="h3" className="text-base font-semibold leading-6 text-gray-900 mb-6">
                       {product ? 'Ürün Düzenle' : 'Yeni Ürün Ekle'}
                     </Dialog.Title>
-                    <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-                      <div className="space-y-6">
+                    <form onSubmit={handleSubmit}>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                         <div>
                           <label htmlFor="name" className="block text-sm font-medium text-gray-700">
                             Ürün Adı

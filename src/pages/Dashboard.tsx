@@ -1,306 +1,297 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import type { Product, Transaction } from '../types';
+import type { DashboardStats, Sale, FinancialSummary, OwnerType } from '../types';
+import toast from 'react-hot-toast';
+import {
+  CubeIcon,
+  BanknotesIcon,
+  CurrencyDollarIcon,
+  ShoppingCartIcon,
+  BellIcon,
+  PencilSquareIcon
+} from '@heroicons/react/24/outline';
 
-interface MarketplaceSummary {
-  orders: number;
-  stock: number;
-  revenue: number;
+interface Notification {
+  id: string;
+  message: string;
+  type: string;
+  created_at: string;
 }
 
-interface DashboardData {
-  totalProducts: number;
-  totalStockValue: number;
-  recentTransactions: Transaction[];
-  marketplaces: {
-    trendyol: MarketplaceSummary;
-    hepsiburada: MarketplaceSummary;
-    amazon: MarketplaceSummary;
-  };
+interface Note {
+  id: string;
+  content: string;
+  user_id: string;
+  created_at: string;
 }
 
-function classNames(...classes: string[]) {
-  return classes.filter(Boolean).join(' ');
+interface OwnerStats {
+  totalSales: number;
+  totalOrders: number;
+  totalProfit: number;
 }
 
 export default function Dashboard() {
-  const [data, setData] = useState<DashboardData>({
-    totalProducts: 0,
-    totalStockValue: 0,
-    recentTransactions: [],
-    marketplaces: {
-      trendyol: { orders: 0, stock: 0, revenue: 0 },
-      hepsiburada: { orders: 0, stock: 0, revenue: 0 },
-      amazon: { orders: 0, stock: 0, revenue: 0 }
-    }
-  });
   const [loading, setLoading] = useState(true);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [newNote, setNewNote] = useState('');
+  const [platformStats, setPlatformStats] = useState<Record<string, { orders: number, revenue: number, profit: number }>>({
+    trendyol: { orders: 0, revenue: 0, profit: 0 },
+    hepsiburada: { orders: 0, revenue: 0, profit: 0 },
+    n11: { orders: 0, revenue: 0, profit: 0 },
+    amazon: { orders: 0, revenue: 0, profit: 0 },
+    ciceksepeti: { orders: 0, revenue: 0, profit: 0 },
+    pttavm: { orders: 0, revenue: 0, profit: 0 }
+  });
+  const [ownerStats, setOwnerStats] = useState<Record<OwnerType, OwnerStats>>({
+    umutcan: { totalSales: 0, totalOrders: 0, totalProfit: 0 },
+    levent: { totalSales: 0, totalOrders: 0, totalProfit: 0 },
+    sirket: { totalSales: 0, totalOrders: 0, totalProfit: 0 }
+  });
 
   useEffect(() => {
     fetchDashboardData();
+    fetchNotifications();
+    fetchNotes();
   }, []);
-
-  const calculateStockValue = (products: Product[], transactions: Transaction[]): number => {
-    const productStocks = new Map<string, number>();
-
-    // İlk olarak ürünlerin başlangıç stoklarını set et
-    products.forEach(product => {
-      productStocks.set(product.id, product.quantity);
-    });
-
-    // Tüm işlemleri işle
-    transactions.forEach(transaction => {
-      const currentStock = productStocks.get(transaction.product_id) || 0;
-      const quantity = transaction.quantity;
-
-      switch (transaction.type) {
-        case 'stok_giris':
-          productStocks.set(transaction.product_id, currentStock + quantity);
-          break;
-        case 'stok_cikis':
-        case 'pazaryeri_satis':
-        case 'elden_satis':
-          productStocks.set(transaction.product_id, currentStock - quantity);
-          break;
-        case 'pazaryeri_iade':
-        case 'elden_iade':
-          productStocks.set(transaction.product_id, currentStock + quantity);
-          break;
-      }
-    });
-
-    // Toplam stok değerini hesapla
-    let totalValue = 0;
-    products.forEach(product => {
-      const currentStock = productStocks.get(product.id) || 0;
-      totalValue += currentStock * product.price;
-    });
-
-    return totalValue;
-  };
-
-  const calculateMarketplaceSummaries = (transactions: Transaction[], products: Product[]) => {
-    const summaries = {
-      trendyol: { orders: 0, stock: 0, revenue: 0 },
-      hepsiburada: { orders: 0, stock: 0, revenue: 0 },
-      amazon: { orders: 0, stock: 0, revenue: 0 }
-    };
-
-    // Her platform için stok ve sipariş sayılarını hesapla
-    transactions.forEach(transaction => {
-      const platform = transaction.platform.toLowerCase();
-      if (platform === 'trendyol' || platform === 'hepsiburada' || platform === 'amazon') {
-        const product = products.find(p => p.id === transaction.product_id);
-        if (!product) return;
-
-        const summary = summaries[platform as keyof typeof summaries];
-        
-        if (transaction.type === 'pazaryeri_satis') {
-          summary.orders += 1;
-          summary.stock -= transaction.quantity;
-          summary.revenue += product.price * transaction.quantity;
-        } else if (transaction.type === 'pazaryeri_iade') {
-          summary.orders -= 1;
-          summary.stock += transaction.quantity;
-          summary.revenue -= product.price * transaction.quantity;
-        }
-      }
-    });
-
-    return summaries;
-  };
 
   const fetchDashboardData = async () => {
     try {
-      const [productsRes, transactionsRes] = await Promise.all([
-        supabase.from('products').select('*'),
-        supabase.from('transactions').select(`
-          *,
-          product:products (
-            id,
-            name,
-            brand,
-            model
-          )
-        `)
-      ]);
+      setLoading(true);
 
-      if (productsRes.error) throw productsRes.error;
-      if (transactionsRes.error) throw transactionsRes.error;
+      const { data: sales, error: salesError } = await supabase
+        .from('sales')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-      const products = productsRes.data;
-      const transactions = transactionsRes.data;
-      const totalStockValue = calculateStockValue(products, transactions);
-      const marketplaceSummaries = calculateMarketplaceSummaries(transactions, products);
+      if (salesError) throw salesError;
 
-      setData({
-        totalProducts: products.length,
-        totalStockValue,
-        recentTransactions: transactions.slice(0, 5), // Son 5 işlem
-        marketplaces: marketplaceSummaries
+      // Platform istatistiklerini hesapla
+      const platformData = { ...platformStats };
+      const ownerData = { ...ownerStats };
+
+      sales?.forEach((sale: Sale) => {
+        const platform = sale.platform.toLowerCase();
+        if (platformData[platform]) {
+          platformData[platform].orders += 1;
+          platformData[platform].revenue += Number(sale.sale_price);
+          platformData[platform].profit += Number(sale.net_profit);
+        }
+
+        // Sahip istatistiklerini güncelle
+        const owner = sale.owner_type;
+        if (ownerData[owner]) {
+          ownerData[owner].totalOrders += 1;
+          ownerData[owner].totalSales += Number(sale.sale_price);
+          ownerData[owner].totalProfit += Number(sale.net_profit);
+        }
       });
-    } catch (error: any) {
-      console.error('Dashboard verisi yüklenirken hata:', error);
+
+      setPlatformStats(platformData);
+      setOwnerStats(ownerData);
+
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      toast.error('İstatistikler yüklenirken hata oluştu');
     } finally {
       setLoading(false);
     }
   };
 
-  const getTransactionTypeDisplay = (type: string) => {
-    switch (type) {
-      case 'stok_giris': return 'Stok Girişi';
-      case 'stok_cikis': return 'Stok Çıkışı';
-      case 'pazaryeri_satis': return 'Pazaryeri Satışı';
-      case 'elden_satis': return 'Elden Satış';
-      case 'pazaryeri_iade': return 'Pazaryeri İadesi';
-      case 'elden_iade': return 'Elden İade';
-      default: return type;
+  const fetchNotifications = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+      setNotifications(data || []);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
     }
+  };
+
+  const fetchNotes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('notes')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setNotes(data || []);
+    } catch (error) {
+      console.error('Error fetching notes:', error);
+    }
+  };
+
+  const handleAddNote = async () => {
+    if (!newNote.trim()) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Kullanıcı oturumu bulunamadı');
+
+      const { error } = await supabase
+        .from('notes')
+        .insert([{ content: newNote, user_id: user.id }]);
+
+      if (error) throw error;
+
+      setNewNote('');
+      fetchNotes();
+      toast.success('Not başarıyla eklendi');
+    } catch (error) {
+      console.error('Error adding note:', error);
+      toast.error('Not eklenirken hata oluştu');
+    }
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('tr-TR', {
+      style: 'currency',
+      currency: 'TRY'
+    }).format(amount);
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleString('tr-TR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   if (loading) {
     return (
-      <div className="animate-pulse space-y-4">
-        <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-        <div className="h-10 bg-gray-200 rounded"></div>
+      <div className="flex items-center justify-center h-full">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Ana metrikler */}
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="px-4 py-5 sm:p-6">
-            <dt className="text-sm font-medium text-gray-500 truncate">Toplam Ürün</dt>
-            <dd className="mt-1 text-3xl font-semibold text-gray-900">{data.totalProducts}</dd>
-          </div>
-        </div>
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="px-4 py-5 sm:p-6">
-            <dt className="text-sm font-medium text-gray-500 truncate">Toplam Stok Değeri</dt>
-            <dd className="mt-1 text-3xl font-semibold text-gray-900">₺{data.totalStockValue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</dd>
-          </div>
-        </div>
-      </div>
-
-      {/* Pazaryeri Kartları */}
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {/* Trendyol */}
-        <div className="bg-white overflow-hidden shadow rounded-lg border-l-4 border-[#FF6000]">
-          <div className="px-4 py-5 sm:p-6">
-            <h3 className="text-lg font-medium text-gray-900">Trendyol</h3>
-            <dl className="mt-4 space-y-3">
-              <div className="flex justify-between">
-                <dt className="text-sm font-medium text-gray-500">Bekleyen Sipariş</dt>
-                <dd className="text-sm font-semibold text-gray-900">{data.marketplaces.trendyol.orders}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-sm font-medium text-gray-500">Stok</dt>
-                <dd className="text-sm font-semibold text-gray-900">{data.marketplaces.trendyol.stock}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-sm font-medium text-gray-500">Ciro</dt>
-                <dd className="text-sm font-semibold text-gray-900">₺{data.marketplaces.trendyol.revenue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</dd>
-              </div>
-            </dl>
-          </div>
-        </div>
-
-        {/* Hepsiburada */}
-        <div className="bg-white overflow-hidden shadow rounded-lg border-l-4 border-[#FF6B00]">
-          <div className="px-4 py-5 sm:p-6">
-            <h3 className="text-lg font-medium text-gray-900">Hepsiburada</h3>
-            <dl className="mt-4 space-y-3">
-              <div className="flex justify-between">
-                <dt className="text-sm font-medium text-gray-500">Bekleyen Sipariş</dt>
-                <dd className="text-sm font-semibold text-gray-900">{data.marketplaces.hepsiburada.orders}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-sm font-medium text-gray-500">Stok</dt>
-                <dd className="text-sm font-semibold text-gray-900">{data.marketplaces.hepsiburada.stock}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-sm font-medium text-gray-500">Ciro</dt>
-                <dd className="text-sm font-semibold text-gray-900">₺{data.marketplaces.hepsiburada.revenue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</dd>
-              </div>
-            </dl>
-          </div>
-        </div>
-
-        {/* Amazon */}
-        <div className="bg-white overflow-hidden shadow rounded-lg border-l-4 border-[#FF9900]">
-          <div className="px-4 py-5 sm:p-6">
-            <h3 className="text-lg font-medium text-gray-900">Amazon</h3>
-            <dl className="mt-4 space-y-3">
-              <div className="flex justify-between">
-                <dt className="text-sm font-medium text-gray-500">Bekleyen Sipariş</dt>
-                <dd className="text-sm font-semibold text-gray-900">{data.marketplaces.amazon.orders}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-sm font-medium text-gray-500">Stok</dt>
-                <dd className="text-sm font-semibold text-gray-900">{data.marketplaces.amazon.stock}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-sm font-medium text-gray-500">Ciro</dt>
-                <dd className="text-sm font-semibold text-gray-900">₺{data.marketplaces.amazon.revenue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</dd>
-              </div>
-            </dl>
-          </div>
-        </div>
-      </div>
-
-      {/* Son İşlemler */}
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-4 py-5 sm:p-6">
-          <h3 className="text-lg font-medium text-gray-900">Son İşlemler</h3>
-          <div className="mt-4">
-            <div className="flow-root">
-              <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
-                <div className="inline-block min-w-full py-2 align-middle">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead>
-                      <tr>
-                        <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tarih</th>
-                        <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ürün</th>
-                        <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">İşlem Tipi</th>
-                        <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Miktar</th>
-                        <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Platform</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {data.recentTransactions.map((transaction) => (
-                        <tr key={transaction.id}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {new Date(transaction.created_at).toLocaleDateString('tr-TR')}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {transaction.product ? (
-                              `${transaction.product.name} - ${transaction.product.brand} ${transaction.product.model}`
-                            ) : (
-                              'Ürün bulunamadı'
-                            )}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            <span className={classNames(
-                              'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
-                              transaction.type.includes('cikis') || transaction.type.includes('satis') 
-                                ? 'bg-red-100 text-red-800' 
-                                : 'bg-green-100 text-green-800'
-                            )}>
-                              {getTransactionTypeDisplay(transaction.type)}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{transaction.quantity}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{transaction.platform}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+    <div className="space-y-8">
+      {/* Satış Kanalları */}
+      <div>
+        <h2 className="text-lg font-semibold mb-4">Satış Kanalları</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Object.entries(platformStats).map(([platform, stats]) => (
+            <div key={platform} className="bg-white rounded-lg shadow p-4">
+              <h3 className="text-base font-medium capitalize mb-2">{platform}</h3>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <p className="text-sm text-gray-500">Sipariş</p>
+                  <p className="font-medium">{stats.orders}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Ciro</p>
+                  <p className="font-medium">{formatCurrency(stats.revenue)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Kâr</p>
+                  <p className="font-medium">{formatCurrency(stats.profit)}</p>
                 </div>
               </div>
             </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Kullanıcı İstatistikleri */}
+      <div>
+        <h2 className="text-lg font-semibold mb-4">Kullanıcı İstatistikleri</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {Object.entries(ownerStats).map(([owner, stats]) => (
+            <div key={owner} className="bg-white rounded-lg shadow p-4">
+              <h3 className="text-base font-medium capitalize mb-2">
+                {owner === 'umutcan' ? 'Umutcan' : owner === 'levent' ? 'Levent' : 'Şirket'}
+              </h3>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <p className="text-sm text-gray-500">Sipariş</p>
+                  <p className="font-medium">{stats.totalOrders}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Ciro</p>
+                  <p className="font-medium">{formatCurrency(stats.totalSales)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Kâr</p>
+                  <p className="font-medium">{formatCurrency(stats.totalProfit)}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Bildirimler */}
+        <div className="bg-white rounded-lg shadow p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold flex items-center">
+              <BellIcon className="h-5 w-5 mr-2" />
+              Bildirimler
+            </h2>
+          </div>
+          <div className="space-y-4">
+            {notifications.map((notification) => (
+              <div key={notification.id} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
+                <div className="flex-1">
+                  <p className="text-sm text-gray-900">{notification.message}</p>
+                  <p className="text-xs text-gray-500 mt-1">{formatDate(notification.created_at)}</p>
+                </div>
+              </div>
+            ))}
+            {notifications.length === 0 && (
+              <p className="text-sm text-gray-500 text-center py-4">Bildirim bulunmuyor</p>
+            )}
+          </div>
+        </div>
+
+        {/* Notlar */}
+        <div className="bg-white rounded-lg shadow p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold flex items-center">
+              <PencilSquareIcon className="h-5 w-5 mr-2" />
+              Notlar
+            </h2>
+          </div>
+          <div className="mb-4">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newNote}
+                onChange={(e) => setNewNote(e.target.value)}
+                placeholder="Yeni not ekle..."
+                className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              />
+              <button
+                onClick={handleAddNote}
+                className="inline-flex justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+              >
+                Ekle
+              </button>
+            </div>
+          </div>
+          <div className="space-y-4">
+            {notes.map((note) => (
+              <div key={note.id} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
+                <div className="flex-1">
+                  <p className="text-sm text-gray-900">{note.content}</p>
+                  <p className="text-xs text-gray-500 mt-1">{formatDate(note.created_at)}</p>
+                </div>
+              </div>
+            ))}
+            {notes.length === 0 && (
+              <p className="text-sm text-gray-500 text-center py-4">Not bulunmuyor</p>
+            )}
           </div>
         </div>
       </div>
