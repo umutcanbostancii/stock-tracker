@@ -5,8 +5,17 @@ import type { Product, OwnerType } from '../types';
 import ProductForm from '../components/ProductForm';
 import toast from 'react-hot-toast';
 
-type SortField = 'name' | 'brand' | 'model' | 'quantity' | 'price' | 'purchase_date' | 'owner';
+type SortField = 'name' | 'brand' | 'model' | 'quantity' | 'price' | 'cost_price' | 'sale_price' | 'purchase_date' | 'stock_entry_date' | 'days_in_stock' | 'owner';
 type SortOrder = 'asc' | 'desc';
+
+const getDaysInStockColor = (days: number) => {
+  if (days <= 7) return 'bg-green-50 text-green-700 ring-green-600/20';
+  if (days <= 14) return 'bg-lime-50 text-lime-700 ring-lime-600/20';
+  if (days <= 24) return 'bg-yellow-50 text-yellow-700 ring-yellow-600/20';
+  if (days <= 40) return 'bg-amber-50 text-amber-700 ring-amber-600/20';
+  if (days <= 60) return 'bg-orange-50 text-orange-700 ring-orange-600/20';
+  return 'bg-red-50 text-red-700 ring-red-600/20';
+};
 
 export default function Products() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -32,6 +41,7 @@ export default function Products() {
       const { data, error } = await supabase
         .from('products')
         .select('*')
+        .gt('quantity', 0)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -98,16 +108,16 @@ export default function Products() {
     return new Date(dateString).toLocaleString('tr-TR', {
       year: 'numeric',
       month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      day: 'numeric'
     });
   };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('tr-TR', {
       style: 'currency',
-      currency: 'TRY'
+      currency: 'TRY',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
     }).format(amount);
   };
 
@@ -190,56 +200,37 @@ export default function Products() {
               <table className="min-w-full divide-y divide-gray-300">
                 <thead>
                   <tr>
-                    <th 
-                      scope="col" 
-                      className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-0 cursor-pointer"
-                      onClick={() => handleSort('name')}
-                    >
+                    <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-0 cursor-pointer" onClick={() => handleSort('name')}>
                       Ürün Adı {renderSortIcon('name')}
                     </th>
-                    <th 
-                      scope="col" 
-                      className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 cursor-pointer"
-                      onClick={() => handleSort('brand')}
-                    >
+                    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 cursor-pointer" onClick={() => handleSort('brand')}>
                       Marka {renderSortIcon('brand')}
                     </th>
-                    <th 
-                      scope="col" 
-                      className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 cursor-pointer"
-                      onClick={() => handleSort('model')}
-                    >
+                    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 cursor-pointer" onClick={() => handleSort('model')}>
                       Model {renderSortIcon('model')}
                     </th>
                     <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
                       IMEI
                     </th>
-                    <th 
-                      scope="col" 
-                      className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 cursor-pointer"
-                      onClick={() => handleSort('quantity')}
-                    >
+                    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 cursor-pointer" onClick={() => handleSort('quantity')}>
                       Stok {renderSortIcon('quantity')}
                     </th>
-                    <th 
-                      scope="col" 
-                      className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 cursor-pointer"
-                      onClick={() => handleSort('price')}
-                    >
-                      Fiyat {renderSortIcon('price')}
+                    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 cursor-pointer" onClick={() => handleSort('cost_price')}>
+                      Maliyet {renderSortIcon('cost_price')}
                     </th>
-                    <th 
-                      scope="col" 
-                      className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 cursor-pointer"
-                      onClick={() => handleSort('purchase_date')}
-                    >
-                      Alış Tarihi {renderSortIcon('purchase_date')}
+                    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 cursor-pointer" onClick={() => handleSort('sale_price')}>
+                      Satış Fiyatı {renderSortIcon('sale_price')}
                     </th>
-                    <th 
-                      scope="col" 
-                      className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 cursor-pointer"
-                      onClick={() => handleSort('owner')}
-                    >
+                    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 cursor-pointer" onClick={() => handleSort('purchase_date')}>
+                      Satın Alım {renderSortIcon('purchase_date')}
+                    </th>
+                    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 cursor-pointer" onClick={() => handleSort('stock_entry_date')}>
+                      Stok Giriş {renderSortIcon('stock_entry_date')}
+                    </th>
+                    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 cursor-pointer" onClick={() => handleSort('days_in_stock')}>
+                      Stokta Gün {renderSortIcon('days_in_stock')}
+                    </th>
+                    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 cursor-pointer" onClick={() => handleSort('owner')}>
                       Sahip {renderSortIcon('owner')}
                     </th>
                     <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-0">
@@ -258,10 +249,21 @@ export default function Products() {
                       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{product.imei || '-'}</td>
                       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{product.quantity}</td>
                       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                        {formatCurrency(product.price)}
+                        {formatCurrency(product.cost_price)}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                        {formatCurrency(product.sale_price)}
                       </td>
                       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                         {formatDate(product.purchase_date)}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                        {formatDate(product.stock_entry_date)}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-4 text-sm">
+                        <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${getDaysInStockColor(product.days_in_stock)}`}>
+                          {product.days_in_stock} gün
+                        </span>
                       </td>
                       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                         <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${

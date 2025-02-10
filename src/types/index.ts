@@ -2,34 +2,53 @@ export type PlatformType = 'trendyol' | 'hepsiburada' | 'n11' | 'amazon' | 'cice
 
 export type OwnerType = 'umutcan' | 'levent' | 'sirket';
 
+export interface ExcelRow {
+  'Ürün Adı': string;
+  'Marka': string;
+  'Model': string;
+  'IMEI'?: string;
+  'Stok Miktarı': number | string;
+  'Maliyet Fiyatı': number | string;
+  'Satış Fiyatı': number | string;
+  'Fiyat': number | string;
+  'Satın Alım Tarihi'?: string;
+  'Stok Giriş Tarihi'?: string;
+}
+
 export interface Product {
-  id: string;
-  user_id: string;
+  id?: string;
   name: string;
   brand: string;
   model: string;
-  imei: string | null;
+  imei?: string;
   quantity: number;
+  cost_price: number;
+  sale_price: number;
   price: number;
   owner: OwnerType;
-  purchase_date: string;
-  created_at: string;
-  updated_at: string;
+  stock_entry_date: string;
+  user_id?: string;
+  created_at?: string;
+  updated_at?: string;
+  days_in_stock?: number;
 }
+
+export type ProductFormData = Omit<Product, 'id' | 'created_at' | 'updated_at' | 'days_in_stock'>;
+
+export type SortField = 'name' | 'brand' | 'model' | 'quantity' | 'cost_price' | 'sale_price' | 'stock_entry_date' | 'days_in_stock';
+export type SortOrder = 'asc' | 'desc';
 
 export interface Transaction {
   id: string;
   user_id: string;
   product_id: string;
-  type: 'in' | 'out';
+  type: 'stok_giris' | 'stok_cikis' | 'pazaryeri_satis' | 'elden_satis' | 'pazaryeri_iade' | 'elden_iade';
   quantity: number;
   platform: PlatformType;
   notes?: string;
   created_at: string;
   product: Product;
 }
-
-export type ProductFormData = Omit<Product, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 
 export interface TransactionFormData {
   product_id: string;
@@ -63,16 +82,6 @@ export interface User {
 export interface ImportFormData {
   file: File;
   owner: OwnerType;
-}
-
-export interface ExcelRow {
-  'Ürün Adı': string;
-  'Marka': string;
-  'Model': string;
-  'IMEI'?: string;
-  'Stok Miktarı': string | number;
-  'Fiyat': string | number;
-  'Alış Tarihi'?: string | Date;
 }
 
 export interface Sale {

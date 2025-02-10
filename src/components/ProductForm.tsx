@@ -19,9 +19,11 @@ export default function ProductForm({ product, onClose, onSuccess }: ProductForm
     model: product?.model || '',
     imei: product?.imei || '',
     quantity: product?.quantity || 0,
-    price: product?.price || 0,
+    cost_price: product?.cost_price?.toString() || '0',
+    sale_price: product?.sale_price?.toString() || '0',
+    price: product?.price?.toString() || '0',
     owner: product?.owner || 'sirket' as OwnerType,
-    purchase_date: product?.purchase_date ? new Date(product.purchase_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+    stock_entry_date: product?.stock_entry_date || new Date().toISOString().split('T')[0]
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -35,36 +37,36 @@ export default function ProductForm({ product, onClose, onSuccess }: ProductForm
         throw new Error('Kullanıcı oturumu bulunamadı');
       }
 
+      const productData = {
+        ...formData,
+        cost_price: parseFloat(String(formData.cost_price).replace(/[^0-9.,]/g, '').replace(',', '.')),
+        sale_price: parseFloat(String(formData.sale_price).replace(/[^0-9.,]/g, '').replace(',', '.')),
+        price: parseFloat(String(formData.sale_price).replace(/[^0-9.,]/g, '').replace(',', '.')),
+        quantity: parseInt(String(formData.quantity)),
+        user_id: user.id
+      };
+
       if (product) {
         const { error } = await supabase
           .from('products')
-          .update({
-            ...formData,
-            purchase_date: new Date(formData.purchase_date).toISOString()
-          })
-          .eq('id', product.id)
-          .eq('user_id', user.id);
+          .update(productData)
+          .eq('id', product.id);
 
         if (error) throw error;
         toast.success('Ürün başarıyla güncellendi');
       } else {
         const { error } = await supabase
           .from('products')
-          .insert([{
-            ...formData,
-            user_id: user.id,
-            purchase_date: new Date(formData.purchase_date).toISOString()
-          }]);
+          .insert([productData]);
 
         if (error) throw error;
         toast.success('Ürün başarıyla eklendi');
       }
 
       onSuccess();
-      onClose();
     } catch (error: any) {
-      console.error('Form error:', error);
-      toast.error(error.message || 'Bir hata oluştu');
+      console.error('Error saving product:', error);
+      toast.error(error.message || 'Ürün kaydedilirken hata oluştu');
     } finally {
       setLoading(false);
     }
@@ -116,7 +118,7 @@ export default function ProductForm({ product, onClose, onSuccess }: ProductForm
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                         <div>
                           <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                            Ürün Adı
+                            Kategori
                           </label>
                           <input
                             type="text"
@@ -189,21 +191,54 @@ export default function ProductForm({ product, onClose, onSuccess }: ProductForm
                           />
                         </div>
 
-                        <div>
-                          <label htmlFor="price" className="block text-sm font-medium text-gray-700">
-                            Fiyat
+                        <div className="sm:col-span-2">
+                          <label htmlFor="cost_price" className="block text-sm font-medium text-gray-700">
+                            Maliyet Fiyatı
                           </label>
-                          <input
-                            type="number"
-                            name="price"
-                            id="price"
-                            required
-                            min="0"
-                            step="0.01"
-                            value={formData.price}
-                            onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) })}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                          />
+                          <div className="mt-2">
+                            <div className="relative">
+                              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                <span className="text-gray-500 sm:text-sm">₺</span>
+                              </div>
+                              <input
+                                type="text"
+                                name="cost_price"
+                                id="cost_price"
+                                required
+                                value={typeof formData.cost_price === 'string' ? formData.cost_price : formData.cost_price.toString()}
+                                onChange={(e) => {
+                                  const value = e.target.value.replace(/[^0-9.,]/g, '');
+                                  setFormData(prev => ({ ...prev, cost_price: value }));
+                                }}
+                                className="block w-full rounded-md border-0 py-1.5 pl-7 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="sm:col-span-2">
+                          <label htmlFor="sale_price" className="block text-sm font-medium text-gray-700">
+                            Satış Fiyatı
+                          </label>
+                          <div className="mt-2">
+                            <div className="relative">
+                              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                <span className="text-gray-500 sm:text-sm">₺</span>
+                              </div>
+                              <input
+                                type="text"
+                                name="sale_price"
+                                id="sale_price"
+                                required
+                                value={typeof formData.sale_price === 'string' ? formData.sale_price : formData.sale_price.toString()}
+                                onChange={(e) => {
+                                  const value = e.target.value.replace(/[^0-9.,]/g, '');
+                                  setFormData(prev => ({ ...prev, sale_price: value }));
+                                }}
+                                className="block w-full rounded-md border-0 py-1.5 pl-7 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                              />
+                            </div>
+                          </div>
                         </div>
 
                         <div>
@@ -225,16 +260,16 @@ export default function ProductForm({ product, onClose, onSuccess }: ProductForm
                         </div>
 
                         <div>
-                          <label htmlFor="purchase_date" className="block text-sm font-medium text-gray-700">
-                            Alış Tarihi
+                          <label htmlFor="stock_entry_date" className="block text-sm font-medium text-gray-700">
+                            Stok Giriş Tarihi
                           </label>
                           <input
                             type="date"
-                            name="purchase_date"
-                            id="purchase_date"
+                            name="stock_entry_date"
+                            id="stock_entry_date"
                             required
-                            value={formData.purchase_date}
-                            onChange={(e) => setFormData({ ...formData, purchase_date: e.target.value })}
+                            value={formData.stock_entry_date}
+                            onChange={(e) => setFormData({ ...formData, stock_entry_date: e.target.value })}
                             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                           />
                         </div>

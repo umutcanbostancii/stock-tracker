@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { ArrowUpTrayIcon } from '@heroicons/react/24/outline';
 import { supabase } from '../lib/supabase';
-import toast from 'react-hot-toast';
+import { toast } from 'react-hot-toast';
 import * as XLSX from 'xlsx';
-import type { OwnerType, ExcelRow } from '../types';
+import { ExcelRow, OwnerType } from '../types';
 
 export default function ImportProducts() {
   const [loading, setLoading] = useState(false);
@@ -34,17 +34,24 @@ export default function ImportProducts() {
 
           // Her bir satır için ürün oluştur
           for (const row of jsonData) {
+            const now = new Date().toISOString();
             const product = {
               name: row['Ürün Adı'],
               brand: row['Marka'],
               model: row['Model'],
               imei: row['IMEI'] || null,
               quantity: typeof row['Stok Miktarı'] === 'number' ? row['Stok Miktarı'] : parseInt(row['Stok Miktarı']) || 0,
+              cost_price: typeof row['Maliyet Fiyatı'] === 'number' ? row['Maliyet Fiyatı'] : parseFloat(row['Maliyet Fiyatı']) || 0,
+              sale_price: typeof row['Satış Fiyatı'] === 'number' ? row['Satış Fiyatı'] : parseFloat(row['Satış Fiyatı']) || 0,
               price: typeof row['Fiyat'] === 'number' ? row['Fiyat'] : parseFloat(row['Fiyat']) || 0,
               owner,
-              purchase_date: row['Alış Tarihi'] 
-                ? new Date(row['Alış Tarihi']).toISOString()
-                : new Date().toISOString(),
+              purchase_date: row['Satın Alım Tarihi'] 
+                ? new Date(row['Satın Alım Tarihi']).toISOString()
+                : now,
+              stock_entry_date: row['Stok Giriş Tarihi']
+                ? new Date(row['Stok Giriş Tarihi']).toISOString()
+                : now,
+              added_date: now,
               user_id: user.id
             };
 
