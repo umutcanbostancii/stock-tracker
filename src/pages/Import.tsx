@@ -34,17 +34,19 @@ export default function Import() {
 
           // Her bir satır için ürün oluştur
           for (const row of jsonData) {
+            const now = new Date().toISOString();
             const product = {
               name: row['Ürün Adı'],
               brand: row['Marka'],
               model: row['Model'],
               imei: row['IMEI'] || null,
-              quantity: typeof row['Stok Miktarı'] === 'number' ? row['Stok Miktarı'] : parseInt(row['Stok Miktarı']) || 0,
-              price: typeof row['Fiyat'] === 'number' ? row['Fiyat'] : parseFloat(row['Fiyat']) || 0,
+              quantity: row['Stok Miktarı'],
+              cost_price: row['Maliyet Fiyatı'],
+              sale_price: row['Satış Fiyatı'],
               owner,
-              purchase_date: row['Alış Tarihi'] 
-                ? new Date(row['Alış Tarihi']).toISOString()
-                : new Date().toISOString(),
+              stock_entry_date: row['Stok Giriş Tarihi'] 
+                ? new Date(row['Stok Giriş Tarihi']).toISOString()
+                : now,
               user_id: user.id
             };
 

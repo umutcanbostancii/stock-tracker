@@ -1,22 +1,24 @@
-export type PlatformType = 'trendyol' | 'hepsiburada' | 'n11' | 'amazon' | 'ciceksepeti' | 'pttavm' | 'manual';
+export type PlatformType = 'manual' | 'trendyol' | 'hepsiburada' | 'n11' | 'amazon' | 'ciceksepeti' | 'pttavm';
 
 export type OwnerType = 'umutcan' | 'levent' | 'sirket';
+
+export type TransactionType = 'stok_giris' | 'stok_cikis' | 'pazaryeri_satis' | 'elden_satis' | 'pazaryeri_iade' | 'elden_iade';
 
 export interface ExcelRow {
   'Ürün Adı': string;
   'Marka': string;
   'Model': string;
   'IMEI'?: string;
-  'Stok Miktarı': number | string;
-  'Maliyet Fiyatı': number | string;
-  'Satış Fiyatı': number | string;
-  'Fiyat': number | string;
-  'Satın Alım Tarihi'?: string;
+  'Stok Miktarı': number;
+  'Maliyet Fiyatı': number;
+  'Satış Fiyatı': number;
+  'Alış Tarihi'?: string;
   'Stok Giriş Tarihi'?: string;
 }
 
 export interface Product {
   id?: string;
+  user_id?: string;
   name: string;
   brand: string;
   model: string;
@@ -24,13 +26,12 @@ export interface Product {
   quantity: number;
   cost_price: number;
   sale_price: number;
-  price: number;
+  price?: number;
   owner: OwnerType;
   stock_entry_date: string;
-  user_id?: string;
+  days_in_stock?: number;
   created_at?: string;
   updated_at?: string;
-  days_in_stock?: number;
 }
 
 export type ProductFormData = Omit<Product, 'id' | 'created_at' | 'updated_at' | 'days_in_stock'>;
@@ -39,15 +40,19 @@ export type SortField = 'name' | 'brand' | 'model' | 'quantity' | 'cost_price' |
 export type SortOrder = 'asc' | 'desc';
 
 export interface Transaction {
-  id: string;
+  id?: string;
   user_id: string;
   product_id: string;
-  type: 'stok_giris' | 'stok_cikis' | 'pazaryeri_satis' | 'elden_satis' | 'pazaryeri_iade' | 'elden_iade';
+  product?: Product;
+  type: TransactionType;
   quantity: number;
   platform: PlatformType;
+  owner: OwnerType;
+  sale_price: number;
+  sale_date: string;
+  imei?: string;
   notes?: string;
-  created_at: string;
-  product: Product;
+  created_at?: string;
 }
 
 export interface TransactionFormData {

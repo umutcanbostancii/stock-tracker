@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import type { PlatformType, OwnerType, Sale, PlatformStats } from '../types/index';
+import type { PlatformType, OwnerType, Sale, PlatformStats } from '../types';
 import toast from 'react-hot-toast';
 import {
   BanknotesIcon,

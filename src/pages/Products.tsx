@@ -63,9 +63,9 @@ export default function Products() {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(product => 
         product.name.toLowerCase().includes(query) ||
-        product.imei?.toLowerCase().includes(query) ||
         product.brand.toLowerCase().includes(query) ||
-        product.model.toLowerCase().includes(query)
+        product.model.toLowerCase().includes(query) ||
+        product.imei?.toLowerCase().includes(query)
       );
     }
 
@@ -76,8 +76,8 @@ export default function Products() {
 
     // Sıralama
     filtered.sort((a, b) => {
-      const aValue = a[sortField];
-      const bValue = b[sortField];
+      const aValue = a[sortField] || 0;
+      const bValue = b[sortField] || 0;
 
       if (typeof aValue === 'string' && typeof bValue === 'string') {
         return sortOrder === 'asc' 
@@ -261,8 +261,8 @@ export default function Products() {
                         {formatDate(product.stock_entry_date)}
                       </td>
                       <td className="whitespace-nowrap px-3 py-4 text-sm">
-                        <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${getDaysInStockColor(product.days_in_stock)}`}>
-                          {product.days_in_stock} gün
+                        <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${getDaysInStockColor(product.days_in_stock || 0)}`}>
+                          {product.days_in_stock || 0} gün
                         </span>
                       </td>
                       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">

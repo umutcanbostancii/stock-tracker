@@ -19,9 +19,9 @@ export default function ProductForm({ product, onClose, onSuccess }: ProductForm
     model: product?.model || '',
     imei: product?.imei || '',
     quantity: product?.quantity || 0,
-    cost_price: product?.cost_price?.toString() || '0',
-    sale_price: product?.sale_price?.toString() || '0',
-    price: product?.price?.toString() || '0',
+    cost_price: typeof product?.cost_price === 'number' ? product.cost_price.toString() : '0',
+    sale_price: typeof product?.sale_price === 'number' ? product.sale_price.toString() : '0',
+    price: typeof product?.price === 'number' ? product.price.toString() : '0',
     owner: product?.owner || 'sirket' as OwnerType,
     stock_entry_date: product?.stock_entry_date || new Date().toISOString().split('T')[0]
   });
